@@ -39,9 +39,10 @@ export default function VocabQuiz() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Xáo trộn khi mount hoặc khi vocabList thay đổi
+  // Xáo trộn khi mount hoặc khi vocabList thay đổi, chỉ lấy từ được bật
   useEffect(() => {
-    setList(shuffle(vocabList));
+    const enabledWords = vocabList.filter(word => word.enabled ?? true);
+    setList(shuffle(enabledWords));
     setIdx(0);
     setAnswer("");
     setRevealed(false);
@@ -101,7 +102,7 @@ export default function VocabQuiz() {
     return (
       <div className="p-6 max-w-3xl mx-auto">
         <div className="rounded-box border border-base-300 bg-base-100 p-10 text-center">
-          Chưa có dữ liệu. Hãy thêm từ trong mục <b>Vocabulary</b> trước nhé.
+          Chưa có từ vựng được bật để kiểm tra. Hãy thêm từ trong mục <b>Vocabulary</b> và bật chúng trước nhé.
         </div>
       </div>
     );
