@@ -153,20 +153,22 @@ export default function VocabQuiz() {
           )}
 
           {/* Hành động */}
-          <div className="flex items-center gap-2">
-            <button className="btn btn-primary" onClick={check}>
-              Kiểm tra
-            </button>
-            <button className="btn" onClick={() => setRevealed((v) => !v)}>
-              {revealed ? "Ẩn" : "Hiện"}
-            </button>
+          <div className="flex items-center gap-2 justify-between">
             <button
               className="btn btn-error"
               onClick={next}
               disabled={idx + 1 >= total}
             >
-              Tiếp
+              Bỏ qua
             </button>
+            <button className="btn" onClick={() => setRevealed((v) => !v)}>
+              {revealed ? "Ẩn" : "Đáp án"}
+            </button>
+            <div>
+              <button className="btn btn-primary ml-2" onClick={check}>
+                Kiểm tra
+              </button>
+            </div>
           </div>
 
           {/* Đáp án đầy đủ */}
