@@ -21,17 +21,17 @@ const Header = () => {
     <div className="navbar bg-base-200 shadow-sm">
       <div className="flex-1">
         <Link to={"/"}>
-          <a className="btn btn-ghost text-xl">Michael</a>
+          <a className="btn btn-ghost text-xl">Home</a>
         </Link>
       </div>
       <div className="flex gap-2">
         <SaveButton snapshot={snapshot} setSnapshot={setSnapshot} />
         <button className="btn btn-primary" onClick={() => setOpen(true)}>
-          + Create Word
+          + New
         </button>
         <CreateWordModal open={open} onClose={() => setOpen(false)} />
         <Link to={"quiz"}>
-          <button className="btn btn-secondary">Kiểm Tra</button>
+          <button className="btn btn-secondary">Quiz</button>
         </Link>
       </div>
     </div>
