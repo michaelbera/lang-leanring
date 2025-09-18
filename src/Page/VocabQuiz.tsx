@@ -158,14 +158,14 @@ export default function VocabQuiz() {
               Kiểm tra
             </button>
             <button className="btn" onClick={() => setRevealed((v) => !v)}>
-              {revealed ? "Ẩn đáp án" : "Hiện đáp án"}
+              {revealed ? "Ẩn" : "Hiện"}
             </button>
             <button
-              className="btn btn-ghost"
+              className="btn btn-error"
               onClick={next}
               disabled={idx + 1 >= total}
             >
-              Bỏ qua / Câu tiếp
+              Tiếp
             </button>
           </div>
 
