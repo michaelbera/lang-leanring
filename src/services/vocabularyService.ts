@@ -13,6 +13,7 @@ interface VocabState {
   addVocab: (vocab: Vocab) => void;
   removeVocab: (word: string) => void;
   reset: () => void;
+  setList: (list: Vocab[]) => void;
 }
 
 export const useVocabStore = create<VocabState>()(
@@ -28,6 +29,7 @@ export const useVocabStore = create<VocabState>()(
           vocabList: state.vocabList.filter((v) => v.word !== word),
         })),
       reset: () => set({ vocabList: [] }),
+      setList: (list) => set({ vocabList: list }),
     }),
     {
       name: "vocab-storage",

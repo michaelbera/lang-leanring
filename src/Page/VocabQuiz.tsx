@@ -10,8 +10,24 @@ function shuffle<T>(arr: T[]) {
   return a;
 }
 
+const stripDiacritics = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+const baseNorm = (s: string) =>
+  stripDiacritics(s)
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, ""); // giữ chữ Hán, bỏ ký tự khác
+
+// Chuẩn hoá pinyin với biến thể ü
+const normPinyin = (s: string) => {
+  const noTone = stripDiacritics(s).toLowerCase();
+  const a = noTone.replace(/[^a-z0-9]+/g, ""); // ü đã bị tách dấu thành 'u'
+  const b = noTone.replace(/[üǖǘǚǜ]/g, "v").replace(/[^a-z0-9]+/g, "");
+  return [a, b]; // chấp nhận cả "nihao" và trường hợp cần "lv" -> "lv"
+};
+
 // Chuẩn hoá: lowercase + bỏ khoảng trắng (yêu cầu của bạn)
-const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+const norm = (s: string) => baseNorm(s);
 
 export default function VocabQuiz() {
   const { vocabList } = useVocabStore();
@@ -42,9 +58,20 @@ export default function VocabQuiz() {
 
   const check = () => {
     if (!current) return;
-    const a = norm(answer);
-    const good =
-      a.length > 0 && (a === norm(current.word) || a === norm(current.meaning));
+    const ans = norm(answer);
+
+    // Tập giá trị đúng có thể nhập: word (chữ Hán), meaning (TV), pinyin (có/không dấu, ü -> u/v)
+    const candidates: string[] = [
+      norm(current.word), // "你好"
+      norm(current.meaning), // "Xin chào" -> "xinchao"
+    ];
+
+    if (current.phonetic) {
+      const p = normPinyin(current.phonetic); // ví dụ "nǐ hǎo" -> ["nihao", "nihao"] (hoặc biến thể có "v")
+      candidates.push(...p);
+    }
+
+    const good = ans.length > 0 && candidates.includes(ans);
 
     setResult(good ? "right" : "wrong");
 

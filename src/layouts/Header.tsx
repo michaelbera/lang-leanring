@@ -1,9 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CreateWordModal from "../Page/CreateWord";
 import { Link } from "react-router-dom";
+import SaveButton from "../Page/SaveButotn";
+import { useVocabStore } from "../services/vocabularyService";
+import { loadFromBin } from "../services/jsonbinStorage";
 
 const Header = () => {
   const [open, setOpen] = useState(false);
+  const { setList } = useVocabStore();
+  const [snapshot, setSnapshot] = useState("");
+
+  useEffect(() => {
+    loadFromBin().then((list) => {
+      setList(list);
+      setSnapshot(JSON.stringify(list));
+    });
+  }, [setList]);
 
   return (
     <div className="navbar bg-base-200 shadow-sm">
@@ -13,12 +25,13 @@ const Header = () => {
         </Link>
       </div>
       <div className="flex gap-2">
+        <SaveButton snapshot={snapshot} setSnapshot={setSnapshot} />
         <button className="btn btn-primary" onClick={() => setOpen(true)}>
           + Create Word
         </button>
         <CreateWordModal open={open} onClose={() => setOpen(false)} />
         <Link to={"quiz"}>
-          <button className="btn btn-secondary">Start</button>
+          <button className="btn btn-secondary">Kiểm Tra</button>
         </Link>
       </div>
     </div>
