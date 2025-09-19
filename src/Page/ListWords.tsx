@@ -1,20 +1,8 @@
 import Accuracy from "../components/Accuracy";
-import { useVocabStore, type Vocab } from "../services/vocabularyService";
+import { useVocabStore } from "../services/vocabularyService";
 
 export default function ListWords() {
   const { vocabList, removeVocab, toggleVocab } = useVocabStore();
-
-  const getAccuracyDisplay = (vocab: Vocab) => {
-    const totalAnswers = vocab.totalAnswers ?? 0;
-    const correctAnswers = vocab.correctAnswers ?? 0;
-
-    if (totalAnswers === 0) {
-      return "0/0 (0%)";
-    }
-
-    const percentage = Math.round((correctAnswers / totalAnswers) * 100);
-    return `${correctAnswers}/${totalAnswers} (${percentage}%)`;
-  };
 
   if (!vocabList.length) {
     return (
