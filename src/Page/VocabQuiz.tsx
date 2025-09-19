@@ -30,7 +30,7 @@ const normPinyin = (s: string) => {
 const norm = (s: string) => baseNorm(s);
 
 export default function VocabQuiz() {
-  const { vocabList } = useVocabStore();
+  const { vocabList, updateVocabStats } = useVocabStore();
   const [list, setList] = useState<Vocab[]>([]);
   const [idx, setIdx] = useState(0);
   const [answer, setAnswer] = useState("");
@@ -73,6 +73,9 @@ export default function VocabQuiz() {
     }
 
     const good = ans.length > 0 && candidates.includes(ans);
+
+    // Update statistics
+    updateVocabStats(current.word, good);
 
     setResult(good ? "right" : "wrong");
 
