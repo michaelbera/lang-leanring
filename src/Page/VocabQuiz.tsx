@@ -50,6 +50,14 @@ const getLowestAccuracyWords = (
 
 const MAX_QUESTIONS = 20;
 
+// Interface to track quiz history
+interface QuizHistoryItem {
+  vocab: Vocab;
+  userAnswer: string;
+  isCorrect: boolean;
+  correctAnswers: string[];
+}
+
 export default function VocabQuiz() {
   const { vocabList, updateVocabStats } = useVocabStore();
 
@@ -60,6 +68,7 @@ export default function VocabQuiz() {
   const [result, setResult] = useState<"idle" | "right" | "wrong">("idle");
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  const [quizHistory, setQuizHistory] = useState<QuizHistoryItem[]>([]);
 
   const total = Math.min(list.length, MAX_QUESTIONS);
   const current = list[idx];
@@ -147,6 +156,19 @@ export default function VocabQuiz() {
 
     const good = ans.length > 0 && candidates.includes(ans);
 
+    // Record quiz history
+    const correctAnswers: string[] = [];
+    if (current.word) correctAnswers.push(current.word);
+    if (current.meaning) correctAnswers.push(current.meaning);
+    if (current.phonetic) correctAnswers.push(current.phonetic);
+
+    setQuizHistory(prev => [...prev, {
+      vocab: current,
+      userAnswer: answer,
+      isCorrect: good,
+      correctAnswers
+    }]);
+
     // cập nhật thống kê
     try {
       updateVocabStats(current.word, good);
@@ -162,6 +184,19 @@ export default function VocabQuiz() {
 
   const next = () => {
     if (current) {
+      // Record as skipped (wrong)
+      const correctAnswers: string[] = [];
+      if (current.word) correctAnswers.push(current.word);
+      if (current.meaning) correctAnswers.push(current.meaning);
+      if (current.phonetic) correctAnswers.push(current.phonetic);
+
+      setQuizHistory(prev => [...prev, {
+        vocab: current,
+        userAnswer: answer || "(bỏ qua)",
+        isCorrect: false,
+        correctAnswers
+      }]);
+
       try {
         updateVocabStats(current.word, false);
       } catch {
@@ -191,6 +226,7 @@ export default function VocabQuiz() {
     setResult("idle");
     setQuizCompleted(false);
     setCorrectCount(0);
+    setQuizHistory([]);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
@@ -206,6 +242,8 @@ export default function VocabQuiz() {
   }
 
   if (quizCompleted) {
+    const wrongAnswers = quizHistory.filter(item => !item.isCorrect);
+
     return (
       <div className="p-6 max-w-3xl mx-auto">
         <div className="card bg-base-100 border border-base-300">
@@ -234,6 +272,55 @@ export default function VocabQuiz() {
                 </div>
               </div>
             </div>
+
+            {wrongAnswers.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold mb-4 text-error">
+                  📋 Từ trả lời sai ({wrongAnswers.length})
+                </h3>
+                <div className="max-h-96 overflow-y-auto">
+                  <div className="space-y-3">
+                    {wrongAnswers.map((item, index) => (
+                      <div
+                        key={index}
+                        className="card bg-base-200 border border-base-300 text-left"
+                      >
+                        <div className="card-body p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="font-semibold text-lg mb-1">
+                                {item.vocab.word}
+                              </div>
+                              {item.vocab.phonetic && (
+                                <div className="text-sm opacity-70 mb-2">
+                                  [{item.vocab.phonetic}]
+                                </div>
+                              )}
+                              <div className="text-sm">
+                                <span className="text-error font-medium">
+                                  Bạn trả lời: 
+                                </span>{" "}
+                                <span className="italic">
+                                  {item.userAnswer || "(không trả lời)"}
+                                </span>
+                              </div>
+                              <div className="text-sm mt-1">
+                                <span className="text-success font-medium">
+                                  Đáp án đúng:
+                                </span>{" "}
+                                <span className="font-medium">
+                                  {item.correctAnswers.join(", ")}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-4 justify-center">
               <button className="btn btn-primary" onClick={restartQuiz}>
