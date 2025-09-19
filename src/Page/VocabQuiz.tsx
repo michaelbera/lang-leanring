@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVocabStore, type Vocab } from "../services/vocabularyService";
+import Accuracy from "../components/Accuracy";
 
 function shuffle<T>(arr: T[]) {
   const a = [...arr];
@@ -127,7 +128,7 @@ export default function VocabQuiz() {
           return prev;
         }
       });
-    }, 100) as unknown as number;
+    }, 3000) as unknown as number;
   };
 
   const check = () => {
@@ -163,11 +164,20 @@ export default function VocabQuiz() {
     if (current) {
       try {
         updateVocabStats(current.word, false);
-      } catch {}
+      } catch {
+        //
+      }
     }
-    // Không đổi result để tránh hiển thị alert sai; giữ "idle"
-    setResult("idle");
-    goNext();
+
+    if (idx + 1 < total) {
+      setIdx(idx + 1);
+      setAnswer("");
+      setRevealed(false);
+      setResult("idle");
+      requestAnimationFrame(() => inputRef.current?.focus());
+    } else {
+      setQuizCompleted(true);
+    }
   };
 
   const restartQuiz = () => {
@@ -252,8 +262,11 @@ export default function VocabQuiz() {
       <div className="card bg-base-100 border border-base-300">
         <div className="card-body gap-4">
           <div>
-            <div className="text-sm opacity-70">Câu hỏi</div>
-            <div className="text-2xl font-semibold">{current.word}</div>
+            <div className="text-sm  flex justify-between ">
+              Câu hỏi
+              <Accuracy vocab={current} />
+            </div>
+            <div className="text-2xl font-semibold ">{current.word}</div>
           </div>
 
           <fieldset className="fieldset">
@@ -288,11 +301,7 @@ export default function VocabQuiz() {
           )}
 
           <div className="flex items-center gap-2 justify-between">
-            <button
-              className="btn btn-error"
-              onClick={next}
-              disabled={result !== "idle"}
-            >
+            <button className="btn btn-error" onClick={next}>
               Bỏ qua
             </button>
             <button className="btn" onClick={() => setRevealed((v) => !v)}>

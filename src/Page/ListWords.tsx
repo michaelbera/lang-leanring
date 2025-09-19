@@ -1,3 +1,4 @@
+import Accuracy from "../components/Accuracy";
 import { useVocabStore, type Vocab } from "../services/vocabularyService";
 
 export default function ListWords() {
@@ -45,9 +46,7 @@ export default function ListWords() {
               <td className="opacity-70">{v.phonetic}</td>
               <td className="max-w-xl truncate">{v.meaning}</td>
               <td className="text-center text-sm">
-                <span className="badge badge-primary badge-soft whitespace-nowrap">
-                  {getAccuracyDisplay(v)}
-                </span>
+                <Accuracy vocab={v} />
               </td>
               <td className="text-center">
                 <input
