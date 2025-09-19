@@ -6,11 +6,11 @@ export default function ListWords() {
   const getAccuracyDisplay = (vocab: Vocab) => {
     const totalAnswers = vocab.totalAnswers ?? 0;
     const correctAnswers = vocab.correctAnswers ?? 0;
-    
+
     if (totalAnswers === 0) {
       return "0/0 (0%)";
     }
-    
+
     const percentage = Math.round((correctAnswers / totalAnswers) * 100);
     return `${correctAnswers}/${totalAnswers} (${percentage}%)`;
   };
@@ -45,7 +45,7 @@ export default function ListWords() {
               <td className="opacity-70">{v.phonetic}</td>
               <td className="max-w-xl truncate">{v.meaning}</td>
               <td className="text-center text-sm">
-                <span className="badge badge-outline">
+                <span className="badge badge-primary badge-soft whitespace-nowrap">
                   {getAccuracyDisplay(v)}
                 </span>
               </td>

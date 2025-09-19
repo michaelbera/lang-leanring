@@ -11,47 +11,47 @@ function shuffle<T>(arr: T[]) {
 }
 
 const stripDiacritics = (s: string) =>
-  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 const baseNorm = (s: string) =>
   stripDiacritics(s)
     .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, ""); // giữ chữ Hán, bỏ ký tự khác
+    // Giữ CJK (chữ Hán), loại bỏ ký tự khác
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "");
 
-// Chuẩn hoá pinyin với biến thể ü
+// Chuẩn hoá pinyin (hỗ trợ ü -> u/v)
 const normPinyin = (s: string) => {
-  const noTone = stripDiacritics(s).toLowerCase();
-  const a = noTone.replace(/[^a-z0-9]+/g, ""); // ü đã bị tách dấu thành 'u'
+  const noTone = stripDiacritics(s ?? "").toLowerCase();
+  const a = noTone.replace(/[^a-z0-9]+/g, ""); // ü đã mất dấu -> u
   const b = noTone.replace(/[üǖǘǚǜ]/g, "v").replace(/[^a-z0-9]+/g, "");
-  return [a, b]; // chấp nhận cả "nihao" và trường hợp cần "lv" -> "lv"
+  return [a, b];
 };
 
-// Chuẩn hoá: lowercase + bỏ khoảng trắng (yêu cầu của bạn)
 const norm = (s: string) => baseNorm(s);
 
-// Lấy 20 từ có tỷ lệ đúng thấp nhất
-const getLowestAccuracyWords = (vocabList: Vocab[], count: number = 20): Vocab[] => {
-  const enabledWords = vocabList.filter(word => word.enabled ?? true);
-  
-  // Tính tỷ lệ đúng cho mỗi từ (chưa trả lời lần nào = 0%)
-  const wordsWithAccuracy = enabledWords.map(word => {
+const getLowestAccuracyWords = (
+  vocabList: Vocab[],
+  count: number = 20
+): Vocab[] => {
+  const enabledWords = (vocabList ?? []).filter((w) => w.enabled ?? true);
+
+  const wordsWithAccuracy = enabledWords.map((word) => {
     const totalAnswers = word.totalAnswers ?? 0;
     const correctAnswers = word.correctAnswers ?? 0;
     const accuracy = totalAnswers === 0 ? 0 : correctAnswers / totalAnswers;
-    
     return { word, accuracy };
   });
-  
-  // Sắp xếp theo tỷ lệ đúng tăng dần (thấp nhất trước)
+
   wordsWithAccuracy.sort((a, b) => a.accuracy - b.accuracy);
-  
-  // Lấy tối đa count từ và xáo trộn
-  const selectedWords = wordsWithAccuracy.slice(0, count).map(item => item.word);
+  const selectedWords = wordsWithAccuracy.slice(0, count).map((i) => i.word);
   return shuffle(selectedWords);
 };
 
+const MAX_QUESTIONS = 20;
+
 export default function VocabQuiz() {
   const { vocabList, updateVocabStats } = useVocabStore();
+
   const [list, setList] = useState<Vocab[]>([]);
   const [idx, setIdx] = useState(0);
   const [answer, setAnswer] = useState("");
@@ -60,117 +60,136 @@ export default function VocabQuiz() {
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
 
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Lấy 20 từ có tỷ lệ đúng thấp nhất khi mount hoặc khi vocabList thay đổi
-  useEffect(() => {
-    const selectedWords = getLowestAccuracyWords(vocabList, 20);
-    setList(selectedWords);
-    setIdx(0);
-    setAnswer("");
-    setRevealed(false);
-    setResult("idle");
-    setQuizCompleted(false);
-    setCorrectCount(0);
-  }, [vocabList]);
-
-  const total = Math.min(list.length, 20); // Always show max 20
+  const total = Math.min(list.length, MAX_QUESTIONS);
   const current = list[idx];
 
+  // refs để tránh reset quiz khi stats thay đổi và để dọn timeout
+  const initializedRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<number | null>(null);
+  const totalRef = useRef<number>(total);
+
+  // cập nhật totalRef khi total thay đổi
+  useEffect(() => {
+    totalRef.current = total;
+  }, [total]);
+
+  // Khởi tạo danh sách 1 lần (không reset mỗi khi stats cập nhật)
+  useEffect(() => {
+    if (initializedRef.current) return;
+    const selected = getLowestAccuracyWords(vocabList, MAX_QUESTIONS);
+    setList(selected);
+    initializedRef.current = true;
+  }, [vocabList]);
+
+  // Dọn timeout khi unmount / trước khi đặt timeout mới
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
   const progressText = useMemo(() => {
-    if (!total) return "0 / 20";
-    return `${idx + 1} / 20`;
+    if (!total) return `0 / ${MAX_QUESTIONS}`;
+    // hiển thị dựa trên tổng câu thực tế (<=20)
+    return `${Math.min(idx + 1, total)} / ${total}`;
   }, [idx, total]);
 
   const scorePercentage = useMemo(() => {
-    return Math.round((correctCount / 20) * 100); // Always calculate based on 20 questions
-  }, [correctCount]);
+    if (total === 0) return 0;
+    return Math.round((correctCount / total) * 100);
+  }, [correctCount, total]);
 
   const getScoreColor = (percentage: number) => {
     if (percentage > 80) return "text-success";
-    if (percentage >= 60) return "text-warning"; 
+    if (percentage >= 60) return "text-warning";
     return "text-error";
+  };
+
+  const goNext = () => {
+    // clear timeout cũ nếu có
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+
+    timerRef.current = window.setTimeout(() => {
+      setIdx((prev) => {
+        const next = prev + 1;
+        if (next < totalRef.current) {
+          setAnswer("");
+          setRevealed(false);
+          setResult("idle");
+          // focus lại input
+          requestAnimationFrame(() => inputRef.current?.focus());
+          return next;
+        } else {
+          setQuizCompleted(true);
+          return prev;
+        }
+      });
+    }, 100) as unknown as number;
   };
 
   const check = () => {
     if (!current) return;
     const ans = norm(answer);
 
-    // Tập giá trị đúng có thể nhập: word (chữ Hán), meaning (TV), pinyin (có/không dấu, ü -> u/v)
-    const candidates: string[] = [
-      norm(current.word), // "你好"
-      norm(current.meaning), // "Xin chào" -> "xinchao"
-    ];
+    // Xây tập candidates an toàn
+    const candidates: string[] = [];
+    if (current.word) candidates.push(norm(current.word)); // giữ Hán tự
+    if (current.meaning) candidates.push(norm(current.meaning)); // TV
 
     if (current.phonetic) {
-      const p = normPinyin(current.phonetic); // ví dụ "nǐ hǎo" -> ["nihao", "nihao"] (hoặc biến thể có "v")
+      const p = normPinyin(current.phonetic); // pinyin (a/u/v)
       candidates.push(...p);
     }
 
     const good = ans.length > 0 && candidates.includes(ans);
 
-    // Update statistics
-    updateVocabStats(current.word, good);
-
-    setResult(good ? "right" : "wrong");
-    
-    if (good) {
-      setCorrectCount(prev => prev + 1);
+    // cập nhật thống kê
+    try {
+      updateVocabStats(current.word, good);
+    } catch {
+      // nuốt lỗi để quiz không văng, tuỳ bạn log lại
     }
 
-    // Tự động chuyển câu sau 1.5 giây
-    setTimeout(() => {
-      if (idx + 1 < total) {
-        setIdx(idx + 1);
-        setAnswer("");
-        setRevealed(false);
-        setResult("idle");
-        inputRef.current?.focus();
-      } else {
-        // Hoàn thành quiz
-        setQuizCompleted(true);
-      }
-    }, 1500);
+    setResult(good ? "right" : "wrong");
+    if (good) setCorrectCount((prev) => prev + 1);
+
+    goNext();
   };
 
   const next = () => {
-    // Update statistics as wrong answer when skipping
     if (current) {
-      updateVocabStats(current.word, false);
+      try {
+        updateVocabStats(current.word, false);
+      } catch {}
     }
-    
-    // Auto advance after 1.5 seconds
-    setTimeout(() => {
-      if (idx + 1 < total) {
-        setIdx(idx + 1);
-        setAnswer("");
-        setRevealed(false);
-        setResult("idle");
-        inputRef.current?.focus();
-      } else {
-        // Hoàn thành quiz
-        setQuizCompleted(true);
-      }
-    }, 1500);
+    // Không đổi result để tránh hiển thị alert sai; giữ "idle"
+    setResult("idle");
+    goNext();
   };
 
   const restartQuiz = () => {
-    const selectedWords = getLowestAccuracyWords(vocabList, 20);
-    setList(selectedWords);
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+
+    const selected = getLowestAccuracyWords(vocabList, MAX_QUESTIONS);
+    setList(selected);
     setIdx(0);
     setAnswer("");
     setRevealed(false);
     setResult("idle");
     setQuizCompleted(false);
     setCorrectCount(0);
-    inputRef.current?.focus();
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   if (!total) {
     return (
       <div className="p-6 max-w-3xl mx-auto">
         <div className="rounded-box border border-base-300 bg-base-100 p-10 text-center">
-          Chưa có từ vựng được bật để kiểm tra. Hãy thêm từ trong mục <b>Vocabulary</b> và bật chúng trước nhé.
+          Chưa có từ vựng được bật để kiểm tra. Hãy thêm từ trong mục{" "}
+          <b>Vocabulary</b> và bật chúng trước nhé.
         </div>
       </div>
     );
@@ -181,12 +200,14 @@ export default function VocabQuiz() {
       <div className="p-6 max-w-3xl mx-auto">
         <div className="card bg-base-100 border border-base-300">
           <div className="card-body text-center">
-            <h2 className="card-title text-3xl justify-center mb-4">🎉 Hoàn thành Quiz!</h2>
-            
+            <h2 className="card-title text-3xl justify-center mb-4">
+              🎉 Hoàn thành Quiz!
+            </h2>
+
             <div className="stats shadow mb-6">
               <div className="stat">
                 <div className="stat-title">Tổng câu hỏi</div>
-                <div className="stat-value">20</div>
+                <div className="stat-value">{total}</div>
               </div>
               <div className="stat">
                 <div className="stat-title">Trả lời đúng</div>
@@ -194,21 +215,22 @@ export default function VocabQuiz() {
               </div>
               <div className="stat">
                 <div className="stat-title">Điểm số</div>
-                <div className={`stat-value text-4xl ${getScoreColor(scorePercentage)}`}>
+                <div
+                  className={`stat-value text-4xl ${getScoreColor(
+                    scorePercentage
+                  )}`}
+                >
                   {scorePercentage}%
                 </div>
               </div>
             </div>
 
             <div className="flex gap-4 justify-center">
-              <button 
-                className="btn btn-primary" 
-                onClick={restartQuiz}
-              >
+              <button className="btn btn-primary" onClick={restartQuiz}>
                 Làm lại Quiz
               </button>
-              <button 
-                className="btn btn-outline" 
+              <button
+                className="btn btn-outline"
                 onClick={() => window.history.back()}
               >
                 Về trang chủ
@@ -227,7 +249,6 @@ export default function VocabQuiz() {
         <div className="badge badge-lg">{progressText}</div>
       </div>
 
-      {/* Card câu hỏi */}
       <div className="card bg-base-100 border border-base-300">
         <div className="card-body gap-4">
           <div>
@@ -245,7 +266,9 @@ export default function VocabQuiz() {
               placeholder="Nhập câu trả lời…"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && check()}
+              onKeyDown={(e) =>
+                e.key === "Enter" && result === "idle" && check()
+              }
               autoFocus
             />
             <label className="fieldset-label-alt">
@@ -253,7 +276,6 @@ export default function VocabQuiz() {
             </label>
           </fieldset>
 
-          {/* Feedback */}
           {result === "right" && (
             <div className="alert alert-success">
               <span>Chính xác! Chuyển câu sau 1.5 giây...</span>
@@ -265,7 +287,6 @@ export default function VocabQuiz() {
             </div>
           )}
 
-          {/* Hành động */}
           <div className="flex items-center gap-2 justify-between">
             <button
               className="btn btn-error"
@@ -278,8 +299,8 @@ export default function VocabQuiz() {
               {revealed ? "Ẩn" : "Đáp án"}
             </button>
             <div>
-              <button 
-                className="btn btn-primary ml-2" 
+              <button
+                className="btn btn-primary ml-2"
                 onClick={check}
                 disabled={result !== "idle"}
               >
@@ -288,7 +309,6 @@ export default function VocabQuiz() {
             </div>
           </div>
 
-          {/* Đáp án đầy đủ */}
           {revealed && (
             <div className="mt-2 rounded-box border border-base-300 p-4">
               <div className="font-semibold">{current.word}</div>
