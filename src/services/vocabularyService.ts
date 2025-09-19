@@ -7,6 +7,8 @@ export interface Vocab {
   phonetic: string;
   meaning: string;
   enabled: boolean;
+  totalAnswers?: number; // số lần trả lời
+  correctAnswers?: number; // số lần trả lời đúng
 }
 
 export interface NewVocab {
@@ -20,6 +22,7 @@ interface VocabState {
   addVocab: (vocab: NewVocab) => void;
   removeVocab: (word: string) => void;
   toggleVocab: (word: string) => void;
+  updateVocabStats: (word: string, isCorrect: boolean) => void;
   reset: () => void;
   setList: (list: Vocab[]) => void;
 }
@@ -30,7 +33,12 @@ export const useVocabStore = create<VocabState>()(
       vocabList: [],
       addVocab: (vocab) =>
         set((state) => ({
-          vocabList: [...state.vocabList, { ...vocab, enabled: true }],
+          vocabList: [...state.vocabList, { 
+            ...vocab, 
+            enabled: true,
+            totalAnswers: 0,
+            correctAnswers: 0
+          }],
         })),
       removeVocab: (word) =>
         set((state) => ({
@@ -40,6 +48,18 @@ export const useVocabStore = create<VocabState>()(
         set((state) => ({
           vocabList: state.vocabList.map((v) =>
             v.word === word ? { ...v, enabled: !v.enabled } : v
+          ),
+        })),
+      updateVocabStats: (word, isCorrect) =>
+        set((state) => ({
+          vocabList: state.vocabList.map((v) =>
+            v.word === word
+              ? {
+                  ...v,
+                  totalAnswers: (v.totalAnswers ?? 0) + 1,
+                  correctAnswers: (v.correctAnswers ?? 0) + (isCorrect ? 1 : 0),
+                }
+              : v
           ),
         })),
       reset: () => set({ vocabList: [] }),
