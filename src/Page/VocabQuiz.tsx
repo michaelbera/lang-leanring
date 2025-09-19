@@ -162,12 +162,15 @@ export default function VocabQuiz() {
     if (current.meaning) correctAnswers.push(current.meaning);
     if (current.phonetic) correctAnswers.push(current.phonetic);
 
-    setQuizHistory(prev => [...prev, {
-      vocab: current,
-      userAnswer: answer,
-      isCorrect: good,
-      correctAnswers
-    }]);
+    setQuizHistory((prev) => [
+      ...prev,
+      {
+        vocab: current,
+        userAnswer: answer,
+        isCorrect: good,
+        correctAnswers,
+      },
+    ]);
 
     // cập nhật thống kê
     try {
@@ -190,12 +193,15 @@ export default function VocabQuiz() {
       if (current.meaning) correctAnswers.push(current.meaning);
       if (current.phonetic) correctAnswers.push(current.phonetic);
 
-      setQuizHistory(prev => [...prev, {
-        vocab: current,
-        userAnswer: answer || "(bỏ qua)",
-        isCorrect: false,
-        correctAnswers
-      }]);
+      setQuizHistory((prev) => [
+        ...prev,
+        {
+          vocab: current,
+          userAnswer: answer || "(bỏ qua)",
+          isCorrect: false,
+          correctAnswers,
+        },
+      ]);
 
       try {
         updateVocabStats(current.word, false);
@@ -242,7 +248,7 @@ export default function VocabQuiz() {
   }
 
   if (quizCompleted) {
-    const wrongAnswers = quizHistory.filter(item => !item.isCorrect);
+    const wrongAnswers = quizHistory.filter((item) => !item.isCorrect);
 
     return (
       <div className="p-6 max-w-3xl mx-auto">
@@ -254,21 +260,18 @@ export default function VocabQuiz() {
 
             <div className="stats shadow mb-6">
               <div className="stat">
-                <div className="stat-title">Tổng câu hỏi</div>
-                <div className="stat-value">{total}</div>
-              </div>
-              <div className="stat">
-                <div className="stat-title">Trả lời đúng</div>
-                <div className="stat-value text-success">{correctCount}</div>
-              </div>
-              <div className="stat">
                 <div className="stat-title">Điểm số</div>
-                <div
-                  className={`stat-value text-4xl ${getScoreColor(
-                    scorePercentage
-                  )}`}
-                >
-                  {scorePercentage}%
+                <div className="stat-value">
+                  <span className={`${getScoreColor(scorePercentage)}`}>
+                    {correctCount}
+                  </span>{" "}
+                  / {total}
+                </div>
+                <div className="stat-desc">
+                  {" "}
+                  <div className={`${getScoreColor(scorePercentage)}`}>
+                    (Tỷ lệ đúng: {scorePercentage}%)
+                  </div>
                 </div>
               </div>
             </div>
@@ -298,7 +301,7 @@ export default function VocabQuiz() {
                               )}
                               <div className="text-sm">
                                 <span className="text-error font-medium">
-                                  Bạn trả lời: 
+                                  Bạn trả lời:
                                 </span>{" "}
                                 <span className="italic">
                                   {item.userAnswer || "(không trả lời)"}
