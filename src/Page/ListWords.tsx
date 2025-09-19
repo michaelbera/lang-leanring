@@ -1,7 +1,7 @@
 import { useVocabStore } from "../services/vocabularyService";
 
 export default function ListWords() {
-  const { vocabList, removeVocab } = useVocabStore();
+  const { vocabList, removeVocab, toggleVocab } = useVocabStore();
 
   if (!vocabList.length) {
     return (
@@ -20,6 +20,7 @@ export default function ListWords() {
             <th>Word</th>
             <th>Phonetic</th>
             <th>Meaning</th>
+            <th className="w-20 text-center">Enabled</th>
             <th className="w-24 text-right">Action</th>
           </tr>
         </thead>
@@ -30,6 +31,14 @@ export default function ListWords() {
               <td className="font-semibold">{v.word}</td>
               <td className="opacity-70">{v.phonetic}</td>
               <td className="max-w-xl truncate">{v.meaning}</td>
+              <td className="text-center">
+                <input
+                  type="checkbox"
+                  className="toggle toggle-success"
+                  checked={v.enabled ?? true}
+                  onChange={() => toggleVocab(v.word)}
+                />
+              </td>
               <td className="text-right">
                 <button
                   className="btn btn-error btn-xs"
