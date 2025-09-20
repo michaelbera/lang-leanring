@@ -137,7 +137,7 @@ export default function VocabQuiz() {
           return prev;
         }
       });
-    }, 3000) as unknown as number;
+    }, 1500) as unknown as number;
   };
 
   const check = () => {
